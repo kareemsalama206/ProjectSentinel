@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: projectsentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d projectsentinel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PROJECTSENTINEL_DATABASE_URL: postgresql+psycopg2://sentinel:sentinel@postgres:5432/projectsentinel
+      PROJECTSENTINEL_CORS_ORIGINS: '["http://localhost:5176", "http://localhost:5173"]'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8003:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8003
+    depends_on:
+      - backend
+    ports:
+      - "5176:5173"
+
+volumes:
+  postgres_data:
